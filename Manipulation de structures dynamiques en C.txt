@@ -1,0 +1,691 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <limits.h>
+#include <windows.h>
+
+
+
+// Structures communes aux deux programmes
+typedef struct MemoryPartition {
+    int partitionID;
+    int startAddress;
+    int size;
+    int isOccupied;
+    struct MemoryPartition* next;
+} MemoryPartition;
+
+typedef struct Process {
+    int processID;
+    int arrivalTime;
+    int executionTime;
+    int priority;
+    struct Process* next;
+} Process;
+
+typedef struct FileProcessus {
+    Process* head;// la tete du file
+    Process* tail;// la queue du file
+    int priority;//champs priorite
+    struct FileProcessus* next;//pointeur  vers next
+} FileProcessus;
+
+typedef struct PileFiles {
+    FileProcessus* top;// pointeur vers sommet du pile
+} PileFiles;
+
+// Fonction pour générer une taille aléatoire entre minSize et maxSize
+int generateRandomSize(int minSize, int maxSize) {
+    return rand() % (maxSize - minSize + 1) + minSize;
+}
+// Fonction pour créer une partition de mémoire
+MemoryPartition* createMemoryPartition(int id, int start, int size, int
+isOccupied) {
+ MemoryPartition* partition =
+(MemoryPartition*)malloc(sizeof(MemoryPartition));
+ if (partition != NULL) {
+ partition->partitionID = id;
+ partition->startAddress = start;
+ partition->size = size;
+ partition->isOccupied = isOccupied;
+ partition->next = NULL;
+ }
+ return partition;
+}
+
+// Code spécifique au premier programme
+MemoryPartition* initializeMemory(int numPartitions, int minSize, int maxSize) {
+    srand(time(NULL));
+    MemoryPartition* head = NULL;
+    MemoryPartition* current = NULL;
+
+    for (int i = 1; i <= numPartitions; ++i) {
+        int size = generateRandomSize(minSize, maxSize);
+        int isOccupied = rand() % 2; // 0 pour libre, 1 pour occupée
+        MemoryPartition* partition = createMemoryPartition(i, i - 1, size, isOccupied);
+
+        if (head == NULL) {
+            head = partition;
+            current = head;
+        } else {
+            current->next = partition;
+            current = partition;
+        }
+    }
+
+    return head;
+}
+
+// Fonction pour afficher l'état de la mémoire de manière textuelle
+void displayMemoryTextual(MemoryPartition* memory) {
+    MemoryPartition* current = memory;
+    printf("Etat de la Memoire:\n");
+
+    while (current != NULL) {
+        printf("Partition %d: %s, Taille: %d\n", current->partitionID,
+               (current->isOccupied == 1) ? "Occupee" : "Libre", current->size);
+        current = current->next;
+    }
+
+    printf("\n");
+}
+
+
+
+
+
+Process* initializeProcessQueue() {
+ // Exemple: Trois processus initiaux
+ Process* process1 = (Process*)malloc(sizeof(Process));
+ Process* process2 = (Process*)malloc(sizeof(Process));
+ Process* process3 = (Process*)malloc(sizeof(Process));
+ // Initialisation des données des processus
+ process1->processID = 1;
+ process1->arrivalTime = 0;
+ process1->executionTime = 10;
+ process1->priority = 1;
+ process2->processID = 2;
+ process2->arrivalTime = 2;
+ process2->executionTime = 8;
+ process2->priority = 2;
+ process3->processID = 3;
+ process3->arrivalTime = 5;
+ process3->executionTime = 15;
+ process3->priority = 1;
+ // Liaisons entre les processus
+ process1->next = process2;
+ process2->next = process3;
+ process3->next = NULL;
+ return process1; // Retourne le point d'entrée de la file
+}
+// Fonction pour choisir la meilleure partition selon la politique "Best fit"
+MemoryPartition* bestFit(MemoryPartition* memory, int size) {
+ MemoryPartition* bestFitPartition = NULL;
+ int bestFitSize = INT_MAX; // Initialiser à une valeur maximale pourtrouver la plus petite partition
+ MemoryPartition* current = memory;
+ while (current != NULL) {
+ if (current->isOccupied == 0 && current->size >= size) {
+ // La partition est libre et de taille suffisante
+ if (current->size < bestFitSize) {
+ bestFitSize = current->size;
+ bestFitPartition = current;
+ }
+ }
+ current = current->next;
+ }
+ return bestFitPartition;
+}
+// Fonction pour choisir la première partition disponible pour le processus First fit
+MemoryPartition* firstFit(MemoryPartition* memory, int size) {
+    MemoryPartition* current = memory;
+    while (current != NULL) {
+        if (current->isOccupied == 0 && current->size >= size) {
+            return current;
+        }
+        current = current->next;
+    }
+    return NULL; // Aucune partition disponible
+}
+
+
+// Fonction pour choisir la partition avec le résidu mémoire maximal pour le processus
+MemoryPartition* worstFit(MemoryPartition* memory, int size) {
+    MemoryPartition* worstFitPartition = NULL;
+    int worstFitSize = INT_MIN; // Initialiser à une valeur minimale pour trouver la plus grande partition
+    MemoryPartition* current = memory;
+    while (current != NULL) {
+        if (current->isOccupied == 0 && current->size >= size) {
+            if (current->size > worstFitSize) {
+                worstFitSize = current->size;
+                worstFitPartition = current;
+            }
+        }
+        current = current->next;
+    }
+    return worstFitPartition;
+}
+
+
+
+// Fonction pour charger un processus en mémoire selon la politiquechoisie
+void loadProcess(MemoryPartition* memory, Process* process,
+MemoryPartition* (*allocationPolicy)(MemoryPartition*, int)) {
+ int processSize = process->executionTime;
+ MemoryPartition* selectedPartition = allocationPolicy(memory,
+processSize);
+ if (selectedPartition != NULL) {
+ // Charger le processus dans la partition sélectionnée
+ selectedPartition->isOccupied = 1;
+ printf("Processus %d charger dans la Partition %d.\n", process->processID, selectedPartition->partitionID);
+ } else {
+ printf("Aucune partition disponible pour le Processus %d.\n",
+process->processID);
+ }
+}
+// Fonction pour supprimer un processus terminé de la mémoire et chargerun processus en attente
+void removeAndLoadProcess(MemoryPartition* memory, Process**
+processQueue, MemoryPartition* (*allocationPolicy)(MemoryPartition*,
+int)) {
+ // Recherche d'un processus terminé dans la mémoire
+ MemoryPartition* current = memory;
+ while (current != NULL) {
+ if (current->isOccupied == 1) {
+ // Marquer la partition comme libre
+ current->isOccupied = 0;
+ // Charger le prochain processus en attente dans cettepartition
+ if (*processQueue != NULL) {
+ loadProcess(memory, *processQueue, allocationPolicy);
+ *processQueue = (*processQueue)->next; // Déplacer lafile vers le processus suivant
+ }
+ return; // Finir après le traitement d'une partition
+ }
+ current = current->next;
+ }
+ printf("Aucun processus terminé trouver dans la memoire.\n");
+}
+// Fonction pour réorganiser les processus en mémoire
+void rearrangeMemory(MemoryPartition* memory) {
+ MemoryPartition* current = memory;
+ MemoryPartition* previous = NULL;
+ MemoryPartition* freeMemory = NULL;
+ while (current != NULL) {
+ if (current->isOccupied == 0) {
+ // La partition est libre
+ if (freeMemory == NULL) {
+ // Première partition libre rencontrée
+ freeMemory = current;
+ } else {
+ // Agrandir la partition libre existante
+ freeMemory->size += current->size;
+ // Supprimer la partition actuelle de la liste
+ previous->next = current->next;
+ free(current);
+ current = previous;
+ }
+ } else {
+ // La partition est occupée, réinitialiser le pointeur versla partition libre
+ freeMemory = NULL;
+ }
+ // Passer à la partition suivante
+ previous = current;
+ current = current->next;
+ }
+}
+
+
+
+
+
+
+
+
+// Function to create a process
+Process* createProcess(int id, int priority) {
+    Process* process = malloc(sizeof(Process));
+    if (process != NULL) {
+        *process = (Process){.processID = id, .priority = priority, .next = NULL};
+    }
+    return process;
+}
+
+
+
+// Function to display the state of the process queue
+void displayProcessQueue(const Process* processQueue) {
+    printf("Process Queue:\n");
+    while (processQueue != NULL) {
+        printf("Process %d: Priority %d\n", processQueue->processID, processQueue->priority);
+        processQueue = processQueue->next;
+    }
+    printf("\n");
+}
+
+// Function to free memory partitions
+void freeMemory(MemoryPartition* memory) {
+    while (memory != NULL) {
+        MemoryPartition* next = memory->next;
+        free(memory);
+        memory = next;
+    }
+}
+
+// Function to free process queue
+void freeProcessQueue(Process* processQueue) {
+    while (processQueue != NULL) {
+        Process* next = processQueue->next;
+        free(processQueue);
+        processQueue = next;
+    }
+}
+
+// Function to create a file of processes
+// Function to create a file of processes
+FileProcessus* createFileProcessus(int priority) {
+    FileProcessus* file = (FileProcessus*)malloc(sizeof(FileProcessus));
+    if (file != NULL) {
+        file->head = file->tail = NULL;
+        file->priority = priority;  // Initialize the priority
+        file->next = NULL;
+    }
+    return file;
+}
+
+
+// Function to initialize a pile of files
+PileFiles* initializePileFiles() {
+    PileFiles* pile = malloc(sizeof(PileFiles));
+    if (pile != NULL) {
+        pile->top = NULL;
+    }
+    return pile;
+}
+
+
+// Function to push a file into the pile
+void pushFile(PileFiles* pile, FileProcessus* file) {
+    file->next = pile->top;
+    pile->top = file;
+}
+
+
+
+// Function to pop a file from the pile
+FileProcessus* popFile(PileFiles* pile) {
+    if (pile->top == NULL) {
+        return NULL; // Pile is empty
+    }
+
+    FileProcessus* file = pile->top;
+    pile->top = file->next;
+    file->next = NULL; // Clear the link
+    return file;
+}
+
+
+
+// Function to add a process to the file based on its priority
+void addProcessToFile(FileProcessus* file, Process* process) {
+    if (file->head == NULL) {
+        file->head = file->tail = process;
+    } else {
+        file->tail->next = process;
+        file->tail = process;
+    }
+}
+
+
+
+// Function to remove a process from the file based on its priority
+Process* removeProcessFromFile(FileProcessus* file) {
+    if (file->head == NULL) {
+        return NULL; // File is empty
+    }
+
+    Process* process = file->head;
+    file->head = process->next;
+    process->next = NULL; // Clear the link
+    return process;
+}
+
+
+
+// Function to display the state of the pile of files
+void displayPileFiles(const PileFiles* pile) {
+    printf("Pile of Files:\n");
+
+    FileProcessus* current = pile->top;
+    while (current != NULL) {
+        printf("File with Priority %d\n", current->priority);
+        Process* process = current->head;
+        while (process != NULL) {
+            printf("    Process %d: Priority %d\n", process->processID, process->priority);
+            process = process->next;
+        }
+        current = current->next;
+    }
+
+    printf("\n");
+}
+
+
+
+
+FileProcessus* findFileWithPriority(PileFiles* pile, int priority) {
+    FileProcessus* current = pile->top;
+
+    while (current != NULL) {
+        if (current->priority == priority) {
+            return current;
+        }
+        current = current->next;
+    }
+
+    return NULL;  // Aucune file trouvée avec la priorité spécifiée
+}
+
+
+
+// Fonction pour gérer la logique de priorité et déplacer les processus entre les files
+void handlePriorityLogic(PileFiles* pile, MemoryPartition* memory, Process* process, MemoryPartition* (*allocationPolicy)(MemoryPartition*, int)) {
+    FileProcessus* currentFile = pile->top;
+
+    // Trouver la file avec la même priorité que le processus
+    while (currentFile != NULL && currentFile->priority != process->priority) {
+        currentFile = currentFile->next;
+    }
+
+    if (currentFile == NULL) {
+        // Aucune file avec la même priorité, créer une nouvelle file
+        currentFile = createFileProcessus(process->priority);
+        if (currentFile != NULL) {
+            pushFile(pile, currentFile);
+        }
+    }
+
+
+    // Ajouter le processus à la file
+    addProcessToFile(currentFile, process);
+
+    // Vérifier si le processus peut être chargé en mémoire
+    if (currentFile->priority == pile->top->priority) {
+        // La file a la priorité la plus élevée, essayer de charger un processus en mémoire
+        Process* nextProcess = removeProcessFromFile(currentFile);
+        if (nextProcess != NULL) {
+            // Charger le processus en mémoire (en utilisant la politique bestFit)
+            loadProcess(memory, nextProcess, allocationPolicy);
+            free(nextProcess); // Libérer la structure du processus
+        }
+    }
+}
+
+// Function to display the menu
+void displayMenu() {
+    printf("Choisissez un programme à executer:\n");
+    printf("1. Premier Programme\n");
+    printf("2. Deuxieme Programme\n");
+    printf("Entrez le numero du programme (1 ou 2): ");
+}
+
+
+// Fonction pour afficher l'état de la mémoire de manière graphique
+
+
+// Function to display the state of the memory graphically
+void displayMemoryGraphical(MemoryPartition* memory) {
+    HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+
+    printf("Etat de la Memoire:\n");
+
+    while (memory != NULL) {
+        printf("|");
+
+        for (int i = 0; i < memory->size; ++i) {
+            if (memory->isOccupied) {
+                SetConsoleTextAttribute(hConsole, FOREGROUND_RED);
+                printf("#");
+            } else {
+                SetConsoleTextAttribute(hConsole, FOREGROUND_GREEN);
+                printf("-");
+            }
+        }
+
+        SetConsoleTextAttribute(hConsole, FOREGROUND_INTENSITY); // Reset color
+
+        printf("|");
+
+        if (memory->next != NULL) {
+            printf(" -> ");
+        }
+
+        memory = memory->next;
+    }
+
+    printf("\n\n");
+}
+
+
+
+
+
+
+
+
+int main() {
+    srand(time(NULL));
+
+    int choice;
+    displayMenu();
+
+    // Read the user's choice
+    if (scanf("%d", &choice) != 1 || (choice != 1 && choice != 2)) {
+        printf("Choix invalide. Veuillez entrer 1 ou 2.\n");
+        return 1;  // Error code
+    }
+
+    int numPartitions = 5;
+    int minSize = 10;
+    int maxSize = 30;
+
+    MemoryPartition* memory = initializeMemory(numPartitions, minSize, maxSize);
+    displayMemoryTextual(memory);
+
+    if (choice == 1) {// executer paertie
+
+        printf("Execution du Premier Code: sans priorite\n");
+        Process* processQueue = initializeProcessQueue();
+        displayProcessQueue(processQueue);
+
+// Initialisation de la mémoire avec des partitions libres
+    int numPartitions = 5;
+    int minSize = 10;
+    int maxSize = 30;
+    MemoryPartition* memory = initializeMemory(numPartitions, minSize, maxSize);
+    displayMemoryTextual(memory);
+
+
+
+    // Choix de la politique d'allocation
+    printf("Choisissez une politique d'allocation:\n");
+    printf("1. First Fit\n");
+    printf("2. Best Fit\n");
+    printf("3. Worst Fit\n");
+    int allocationChoice;
+    scanf("%d", &allocationChoice);
+
+    // Utilisation de la politique d'allocation choisie
+    switch (allocationChoice) {
+        case 1:
+            printf("Utilisation de la politique First Fit\n");
+            while (processQueue != NULL) {
+                Process* currentProcess = processQueue;
+                loadProcess(memory, currentProcess, firstFit);
+                displayMemoryTextual(memory);
+                displayMemoryGraphical(memory);
+                removeAndLoadProcess(memory, &processQueue, firstFit);
+                rearrangeMemory(memory);
+                displayMemoryTextual(memory);
+                displayMemoryGraphical(memory);
+            }
+            break;
+
+        case 2:
+            printf("Utilisation de la politique Best Fit\n");
+           while (processQueue != NULL) {
+                Process* currentProcess = processQueue;
+                loadProcess(memory, currentProcess, bestFit);
+                displayMemoryTextual(memory);
+                displayMemoryGraphical(memory);
+                removeAndLoadProcess(memory, &processQueue, bestFit);
+                rearrangeMemory(memory);
+                displayMemoryTextual(memory);
+                displayMemoryGraphical(memory);
+            }
+            break;
+
+        case 3:
+            printf("Utilisation de la politique Worst Fit\n");
+           while (processQueue != NULL) {
+                Process* currentProcess = processQueue;
+                loadProcess(memory, currentProcess, worstFit);
+                displayMemoryTextual(memory);
+                displayMemoryGraphical(memory);
+                removeAndLoadProcess(memory, &processQueue, worstFit);
+                rearrangeMemory(memory);
+                displayMemoryTextual(memory);
+                displayMemoryGraphical(memory);
+            }
+            break;
+
+        default:
+            printf("Choix invalide.\n");
+            break;
+    }
+
+    // Libération de la mémoire
+    freeMemory(memory);
+    freeProcessQueue(processQueue);
+
+
+
+    } else if (choice == 2) {
+
+        printf("Execution du 2 eme Code: Avec priorite\n");
+        PileFiles* pile = initializePileFiles();
+        Process* processQueue = initializeProcessQueue();
+        displayProcessQueue(processQueue);
+
+         // Choix de la politique d'allocation
+    printf("Choisissez une politique d'allocation:\n");
+    printf("1. First Fit\n");
+    printf("2. Best Fit\n");
+    printf("3. Worst Fit\n");
+    int allocationChoice;
+    scanf("%d", &allocationChoice);
+
+        Process* currentProcess = processQueue;
+
+    // Utilisation de la politique d'allocation choisie
+    switch (allocationChoice) {
+        case 1:
+            printf("Utilisation de la politique First Fit\n");
+
+        while (currentProcess != NULL) {
+            handlePriorityLogic(pile, memory, currentProcess, firstFit);
+            currentProcess = currentProcess->next;
+        }
+
+        displayPileFiles(pile);
+        loadProcess(memory, processQueue, firstFit);
+        displayMemoryTextual(memory);
+        displayMemoryGraphical(memory);
+
+        removeAndLoadProcess(memory, &processQueue, firstFit);
+        displayMemoryTextual(memory);
+        displayMemoryGraphical(memory);
+
+        rearrangeMemory(memory);
+        displayMemoryTextual(memory);
+        displayMemoryGraphical(memory);
+
+
+            break;
+
+        case 2:{
+            printf("Utilisation de la politique Best Fit\n");
+
+
+        while (currentProcess != NULL) {
+            handlePriorityLogic(pile, memory, currentProcess, bestFit);
+            currentProcess = currentProcess->next;
+        }
+
+        displayPileFiles(pile);
+        loadProcess(memory, processQueue, bestFit);
+        displayMemoryTextual(memory);
+        displayMemoryGraphical(memory);
+
+        removeAndLoadProcess(memory, &processQueue, bestFit);
+        displayMemoryTextual(memory);
+        displayMemoryGraphical(memory);
+
+        rearrangeMemory(memory);
+        displayMemoryTextual(memory);
+        displayMemoryGraphical(memory);
+
+
+            break;}
+
+        case 3:{
+            printf("Utilisation de la politique Worst Fit\n");
+
+
+        while (currentProcess != NULL) {
+            handlePriorityLogic(pile, memory, currentProcess, worstFit);
+            currentProcess = currentProcess->next;
+        }
+
+        displayPileFiles(pile);
+        loadProcess(memory, processQueue, worstFit);
+        displayMemoryTextual(memory);
+        displayMemoryGraphical(memory);
+
+        removeAndLoadProcess(memory, &processQueue, worstFit);
+        displayMemoryTextual(memory);
+        displayMemoryGraphical(memory);
+
+        rearrangeMemory(memory);
+        displayMemoryTextual(memory);
+        displayMemoryGraphical(memory);
+
+
+            break;}
+
+        default:
+            printf("Choix invalide.\n");
+            break;
+    }
+
+
+
+
+
+
+
+        freeMemory(memory);
+        freeProcessQueue(processQueue);
+
+        while (pile->top != NULL) {
+            FileProcessus* file = popFile(pile);
+            free(file);
+        }
+        free(pile);
+
+
+    }
+
+    return 0;
+}
+
+
+
+
