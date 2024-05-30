@@ -1,0 +1,49 @@
+/* JavaFX CSS - Leave this comment until you have at least create one rule which uses -fx-Property */
+.login-bg{
+    
+-fx-background-color:linear-gradient(to bottom right ,#8582E9, #A0DDEC);
+	}
+.exit{
+    
+    -fx-background-color: #CC0000;
+    -fx-background-radius:5px;
+    -fx-cursor:hand;
+    
+}
+
+.exit:hover{
+    
+    -fx-background-color:#f15b72;
+    
+}
+.pane {
+	-fx-background-color:white;
+	-fx-background-radius: 100px 0px 0px 150px ;  
+	
+  	}
+.textfield-design{
+    
+    -fx-background-color:transparent;
+    -fx-background-radius:10px;
+    -fx-border-color:linear-gradient(to bottom right, #2f466b,#A0DDEC);
+    -fx-border-radius:10px;
+    -fx-text-inner-color:#000;
+    
+}
+.textfield-design:hover{
+-fx-background-color:#F2F7F7;
+}
+.button-design{
+    
+    -fx-background-color:linear-gradient(to bottom right, #5582E9, #90DDEC);
+    -fx-background-radius:20px;
+    -fx-cursor:hand;
+    
+}
+
+.button-design:hover{
+    
+    -fx-background-color:linear-gradient(to bottom left, #8582E9, #043F5C);
+    
+}
+
