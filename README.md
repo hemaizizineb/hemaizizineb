@@ -1,12 +1,2 @@
-- 👋 Hi, I’m @hemaizizineb
--computer science student 
-- 👀 I’m interested in web dev a, IT and programming
-- 🌱 I’m currently a ctf player and a learning with small projects
--programming languages I learnt so far are: C , Java , Python 
-
-don't hesitate to check out!
-
-<!---
-hemaizizineb/hemaizizineb is a ✨ special ✨ repository because its `README.md` (this file) appears on your GitHub profile.
-You can click the Preview link to take a look at your changes.
---->
+A clinic management sysytem  i have devoloped with my projext teemates in java class in my second year of my computer science degree at USTHB.
+we used : eclipse(code) / Scenebuilder(interface) / my sql (for database)
