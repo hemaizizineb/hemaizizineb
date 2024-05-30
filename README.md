@@ -1,6 +1,6 @@
 - 👋 Hi, I’m @hemaizizineb
 -computer science student 
-- 👀 I’m interested in web dev and security and programming
+- 👀 I’m interested in web dev a, IT and programming
 - 🌱 I’m currently a ctf player and a learning with small projects
 -programming languages I learnt so far are: C , Java , Python 
 
