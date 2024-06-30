@@ -1,0 +1,45 @@
+Winning rules of the game ROCK PAPER SCISSORS are:
+Rock vs Paper -> Paper wins 
+Rock vs Scissors -> Rock wins 
+Paper vs Scissors -> Scissor wins 
+
+Enter your choice  
+ 1 - Rock 
+ 2 - Paper         
+ 3 - Scissors      
+
+Enter your choice: 1
+User choice is: Rock
+Now it's the Computer's Turn...   
+Computer choice is: Paper
+Rock vs Paper
+Paper wins =><== Computer wins ==>
+Do you want to play again? (Y/N)  
+Y
+Enter your choice 
+ 1 - Rock
+ 2 - Paper
+ 3 - Scissors
+
+Enter your choice: 3
+User choice is: Scissors
+Now it's the Computer's Turn...
+Computer choice is: Paper
+Scissors vs Paper
+Scissors wins =><== User wins ==>
+Do you want to play again? (Y/N)
+Y
+Enter your choice 
+ 1 - Rock
+ 2 - Paper
+ 3 - Scissors
+
+Enter your choice: 2
+User choice is: Paper
+Now it's the Computer's Turn...
+Computer choice is: Rock
+Paper vs Rock
+Paper wins =><== User wins ==>
+Do you want to play again? (Y/N)
+N
+Thanks for playing!
